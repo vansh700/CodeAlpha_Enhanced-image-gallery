@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Enhanced Image Gallery</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    /* === General Body Styling === */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      text-align: center;
+      min-height: 100vh;
+      color: #e0e0ff;
+      overflow-x: hidden;
+    }
+
+    /* === Page Title === */
+    h1 {
+      margin: 20px 0 30px;
+      color: #fff;
+      font-size: 2.5rem;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    /* === Filter Buttons === */
+    .filter-buttons {
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 0 15px;
+    }
+
+    .filter-buttons button {
+      padding: 12px 24px;
+      border: none;
+      background: rgba(30, 215, 96, 0.8);
+      color: #1a1a2e;
+      cursor: pointer;
+      border-radius: 30px;
+      transition: all 0.3s ease;
+      font-weight: 600;
+      font-size: 1rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .filter-buttons button:hover, 
+    .filter-buttons button.active {
+      background: #1ed760;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+    }
+
+    /* === Gallery Grid === */
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      padding: 15px;
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+
+    /* === Image Container === */
+    .image {
+      overflow: hidden;
+      border-radius: 12px;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+      background: rgba(255, 255, 255, 0.05);
+      transition: all 0.4s ease;
+      position: relative;
+      aspect-ratio: 4/3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .image:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4);
+      z-index: 10;
+    }
+
+    .image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      cursor: pointer;
+      transition: transform 0.5s ease-in-out;
+    }
+
+    .image:hover img {
+      transform: scale(1.08);
+    }
+
+    .image::after {
+      content: attr(data-category);
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: rgba(30, 215, 96, 0.85);
+      color: #0f172a;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* === Lightbox Modal === */
+    .lightbox {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      text-align: center;
+      backdrop-filter: blur(8px);
+    }
+
+    /* === Lightbox Image === */
+    .lightbox-img {
+      max-width: 85%;
+      max-height: 80vh;
+      border-radius: 8px;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+      margin-top: 5vh;
+    }
+
+    /* === Lightbox Controls === */
+    .lightbox .close,
+    .lightbox .prev,
+    .lightbox .next {
+      cursor: pointer;
+      position: absolute;
+      color: white;
+      font-size: 36px;
+      user-select: none;
+      transition: all 0.3s ease;
+      padding: 15px;
+      z-index: 1001;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lightbox .close {
+      top: 30px;
+      right: 30px;
+      font-size: 40px;
+    }
+
+    .lightbox .prev {
+      top: 50%;
+      left: 30px;
+      transform: translateY(-50%);
+    }
+
+    .lightbox .next {
+      top: 50%;
+      right: 30px;
+      transform: translateY(-50%);
+    }
+
+    .lightbox .close:hover,
+    .lightbox .prev:hover,
+    .lightbox .next:hover {
+      background: rgba(30, 215, 96, 0.8);
+      color: #0f172a;
+    }
+
+    .lightbox-info {
+      position: absolute;
+      bottom: 40px;
+      left: 0;
+      right: 0;
+      color: white;
+      padding: 15px;
+      font-size: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .image-title {
+      font-weight: 600;
+      font-size: 1.4rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+
+    .image-index {
+      font-size: 1rem;
+      opacity: 0.8;
+    }
+
+    /* === Loading Indicator === */
+    .loader {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top: 4px solid #1ed760;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      z-index: 1001;
+    }
+
+    @keyframes spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    /* === Responsive Design === */
+    @media (max-width: 768px) {
+      .gallery {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 15px;
+      }
+      
+      .lightbox-img {
+        max-width: 95%;
+        max-height: 60vh;
+      }
+      
+      .lightbox .close {
+        top: 20px;
+        right: 20px;
+      }
+      
+      .lightbox .prev,
+      .lightbox .next {
+        font-size: 28px;
+        width: 50px;
+        height: 50px;
+      }
+      
+      .filter-buttons {
+        gap: 8px;
+      }
+      
+      .filter-buttons button {
+        padding: 10px 18px;
+        font-size: 0.9rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .gallery {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+      }
+      
+      h1 {
+        font-size: 2rem;
+      }
+      
+      .filter-buttons {
+        gap: 6px;
+      }
+      
+      .filter-buttons button {
+        padding: 8px 14px;
+        font-size: 0.85rem;
+      }
+      
+      .lightbox .close,
+      .lightbox .prev,
+      .lightbox .next {
+        padding: 10px;
+        width: 45px;
+        height: 45px;
+        font-size: 24px;
+      }
+      
+      .lightbox-info {
+        bottom: 20px;
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>📸 Enhanced Image Gallery</h1>
+
+  <!-- Filter Buttons -->
+  <div class="filter-buttons">
+    <button data-filter="all" class="active">All</button>
+    <button data-filter="nature">Nature</button>
+    <button data-filter="city">City</button>
+    <button data-filter="animals">Animals</button>
+    <button data-filter="people">People</button>
+  </div>
+
+  <div class="gallery">
+    <!-- NATURE (14) -->
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=400&h=250&q=80" alt="Mountain landscape">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=400&h=250&q=80" alt="Forest with fog">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=400&h=250&q=80" alt="Green forest">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1476820865390-c52aeebb9891?auto=format&fit=crop&w=400&h=250&q=80" alt="Mountain peak">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1433086966358-54859d0ed716?auto=format&fit=crop&w=400&h=250&q=80" alt="Waterfall">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=400&h=250&q=80" alt="Landscape with lake">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1418065460487-3e41a6c84dc5?auto=format&fit=crop&w=400&h=250&q=80" alt="Tropical beach">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=400&h=250&q=80" alt="Snowy mountains">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=400&h=250&q=80" alt="Mountain range">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=400&h=250&q=80" alt="Flower field">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1426604966848-d7adac402bff?auto=format&fit=crop&w=400&h=250&q=80" alt="Countryside landscape">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?auto=format&fit=crop&w=400&h=250&q=80" alt="Rocky beach">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1470240731273-7821a6eeb6bd?auto=format&fit=crop&w=400&h=250&q=80" alt="Sunset over lake">
+    </div>
+    <div class="image nature" data-category="Nature">
+      <img src="https://images.unsplash.com/photo-1506260408121-e353d10b87c7?auto=format&fit=crop&w=400&h=250&q=80" alt="Autumn forest">
+    </div>
+
+    <!-- CITY (14) - Proper cityscapes -->
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1485872299829-c673f5194813?auto=format&fit=crop&w=400&h=250&q=80" alt="New York City skyline">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=400&h=250&q=80" alt="Tokyo city at night">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&h=250&q=80" alt="Paris with Eiffel Tower">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=400&h=250&q=80" alt="Hong Kong skyline">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1496568816309-51d7c20e3b21?auto=format&fit=crop&w=400&h=250&q=80" alt="London with Big Ben">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=400&h=250&q=80" alt="Singapore Marina Bay">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1444723121867-7a241cacace9?auto=format&fit=crop&w=400&h=250&q=80" alt="Dubai skyscrapers">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=400&h=250&q=80" alt="New York City">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?auto=format&fit=crop&w=400&h=250&q=80" alt="Sydney Opera House">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1437957146754-f6377debe171?auto=format&fit=crop&w=400&h=250&q=80" alt="Rio de Janeiro">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1471879832106-c7ab9e0cee23?auto=format&fit=crop&w=400&h=250&q=80" alt="Barcelona city">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1464054313797-e27fb58e90a9?auto=format&fit=crop&w=400&h=250&q=80" alt="Chicago skyline">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1507692049790-de58290a4334?auto=format&fit=crop&w=400&h=250&q=80" alt="Shanghai city">
+    </div>
+    <div class="image city" data-category="City">
+      <img src="https://images.unsplash.com/photo-1498307833015-e7b400441eb8?auto=format&fit=crop&w=400&h=250&q=80" alt="San Francisco bridge">
+    </div>
+
+    <!-- ANIMALS (14) - Verified working images -->
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1546182990-dffeafbe841d?auto=format&fit=crop&w=400&h=250&q=80" alt="Koala bear">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1521651201144-634f700b36ef?auto=format&fit=crop&w=400&h=250&q=80" alt="Group of elephants">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=400&h=250&q=80" alt="Penguins">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1474511320723-9a56873867b5?auto=format&fit=crop&w=400&h=250&q=80" alt="Fox in snow">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1500470353953-a8c6d1187b1b?auto=format&fit=crop&w=400&h=250&q=80" alt="Deer in forest">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1543946207-39bd91e70ca7?auto=format&fit=crop&w=400&h=250&q=80" alt="Tiger">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1550358864-518f202c02ba?auto=format&fit=crop&w=400&h=250&q=80" alt="Polar bear">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1564349683136-77e08dba0e56?auto=format&fit=crop&w=400&h=250&q=80" alt="Giraffe">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1550358864-518f202c02ba?auto=format&fit=crop&w=400&h=250&q=80" alt="Polar bear on ice">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1543852786-1cf6624b9987?auto=format&fit=crop&w=400&h=250&q=80" alt="Cat">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1550358864-518f202c02ba?auto=format&fit=crop&w=400&h=250&q=80" alt="Polar bear">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1500470353953-a8c6d1187b1b?auto=format&fit=crop&w=400&h=250&q=80" alt="Deer">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1564349683136-77e08dba0e56?auto=format&fit=crop&w=400&h=250&q=80" alt="Giraffe">
+    </div>
+    <div class="image animals" data-category="Animals">
+      <img src="https://images.unsplash.com/photo-1543946207-39bd91e70ca7?auto=format&fit=crop&w=400&h=250&q=80" alt="Tiger">
+    </div>
+
+    <!-- PEOPLE (14) - For human-focused images -->
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&h=250&q=80" alt="Portrait of a man">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&h=250&q=80" alt="Woman smiling">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&h=250&q=80" alt="Friends laughing">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&h=250&q=80" alt="Man portrait">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1499996860823-5214fcc65f8f?auto=format&fit=crop&w=400&h=250&q=80" alt="Woman with hat">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1516726817505-f5ed825624d8?auto=format&fit=crop&w=400&h=250&q=80" alt="Woman in nature">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=400&h=250&q=80" alt="Woman with red hair">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1485178575877-1a13bf489dfe?auto=format&fit=crop&w=400&h=250&q=80" alt="Woman in traditional clothes">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1519052537078-e6302a4968d4?auto=format&fit=crop&w=400&h=250&q=80" alt="Man in field">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?auto=format&fit=crop&w=400&h=250&q=80" alt="Woman portrait">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&h=250&q=80" alt="Man with beard">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&h=250&q=80" alt="Woman looking at camera">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&h=250&q=80" alt="Man with glasses">
+    </div>
+    <div class="image people" data-category="People">
+      <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&h=250&q=80" alt="Woman smiling">
+    </div>
+  </div>
+
+  <!-- Lightbox Modal -->
+  <div class="lightbox" tabindex="-1">
+    <div class="loader"></div>
+    <span class="close" title="Close">&times;</span>
+    <img class="lightbox-img" src="" alt="Expanded view" />
+    <span class="prev" title="Previous"><i class="fas fa-chevron-left"></i></span>
+    <span class="next" title="Next"><i class="fas fa-chevron-right"></i></span>
+    <div class="lightbox-info">
+      <span class="image-title"></span>
+      <span class="image-index"></span>
+    </div>
+  </div>
+
+  <script>
+    const images = document.querySelectorAll('.gallery .image img');
+    const lightbox = document.querySelector('.lightbox');
+    const lightboxImg = document.querySelector('.lightbox-img');
+    const closeBtn = document.querySelector('.close');
+    const prevBtn = document.querySelector('.prev');
+    const nextBtn = document.querySelector('.next');
+    const filterBtns = document.querySelectorAll('[data-filter]');
+    const imageTitle = document.querySelector('.image-title');
+    const imageIndex = document.querySelector('.image-index');
+    const loader = document.querySelector('.loader');
+
+    let currentIndex = 0;
+    let imgElements = Array.from(images);
+    let currentFilter = 'all';
+
+    // Show lightbox
+    images.forEach((img, index) => {
+      img.addEventListener('click', () => {
+        currentIndex = index;
+        showLightbox(img.src, img.alt);
+      });
+    });
+
+    function showLightbox(src, alt) {
+      lightbox.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+      
+      // Show loader while image loads
+      loader.style.display = 'block';
+      lightboxImg.style.display = 'none';
+      
+      // Set image title and index
+      imageTitle.textContent = alt;
+      imageIndex.textContent = `${currentIndex + 1} of ${imgElements.length}`;
+      
+      // Create new image to preload
+      const img = new Image();
+      img.onload = function() {
+        lightboxImg.src = src;
+        lightboxImg.style.display = 'block';
+        loader.style.display = 'none';
+      };
+      img.onerror = function() {
+        // Handle broken images
+        lightboxImg.src = 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=400&h=250&q=80';
+        lightboxImg.style.display = 'block';
+        loader.style.display = 'none';
+        imageTitle.textContent = "Image not available";
+      };
+      img.src = src;
+    }
+
+    // Close lightbox
+    closeBtn.onclick = () => {
+      lightbox.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    };
+
+    // Prev image
+    prevBtn.onclick = () => {
+      if (imgElements.length === 0) return;
+      currentIndex = (currentIndex - 1 + imgElements.length) % imgElements.length;
+      showLightbox(imgElements[currentIndex].src, imgElements[currentIndex].alt);
+    };
+
+    // Next image
+    nextBtn.onclick = () => {
+      if (imgElements.length === 0) return;
+      currentIndex = (currentIndex + 1) % imgElements.length;
+      showLightbox(imgElements[currentIndex].src, imgElements[currentIndex].alt);
+    };
+
+    // Filter logic
+    filterBtns.forEach(button => {
+      button.addEventListener('click', () => {
+        // Update active button
+        filterBtns.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        
+        currentFilter = button.getAttribute('data-filter');
+        document.querySelectorAll('.gallery .image').forEach(imgBox => {
+          if (currentFilter === 'all' || imgBox.classList.contains(currentFilter)) {
+            imgBox.style.display = 'flex';
+          } else {
+            imgBox.style.display = 'none';
+          }
+        });
+
+        // Rebuild image list after filter change
+        imgElements = Array.from(document.querySelectorAll('.gallery .image img'))
+          .filter(el => el.closest('.image').style.display !== 'none');
+
+        // Reset index
+        currentIndex = 0;
+      });
+    });
+
+    // Keyboard navigation
+    window.addEventListener('keydown', e => {
+      if (lightbox.style.display === 'block') {
+        if (e.key === 'Escape') {
+          lightbox.style.display = 'none';
+          document.body.style.overflow = 'auto';
+        } else if (e.key === 'ArrowLeft') {
+          prevBtn.click();
+        } else if (e.key === 'ArrowRight') {
+          nextBtn.click();
+        }
+      }
+    });
+
+    // Initialize with all images visible
+    window.addEventListener('DOMContentLoaded', () => {
+      filterBtns[0].classList.add('active');
+      
+      // Add error handling for gallery images
+      images.forEach(img => {
+        img.onerror = function() {
+          this.src = 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=400&h=250&q=80';
+          this.alt = 'Image not available';
+        };
+      });
+    });
+  </script>
+</body>
+</html>
